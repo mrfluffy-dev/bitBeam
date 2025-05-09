@@ -12,6 +12,10 @@ export AS
 AS_FOR_BUILD='as'
 export AS_FOR_BUILD
 BASH='/nix/store/xg75pc4yyfd5n2fimhb98ps910q5lm5n-bash-5.2p37/bin/bash'
+BITBEAM_DATABASE_URL='sqlite://./bitbeam.sqlite'
+export BITBEAM_DATABASE_URL
+BITBEAM_DB_TYPE='sqlite'
+export BITBEAM_DB_TYPE
 CC='gcc'
 export CC
 CC_FOR_BUILD='gcc'
@@ -43,7 +47,7 @@ NIX_BINTOOLS_WRAPPER_TARGET_BUILD_x86_64_unknown_linux_gnu='1'
 export NIX_BINTOOLS_WRAPPER_TARGET_BUILD_x86_64_unknown_linux_gnu
 NIX_BINTOOLS_WRAPPER_TARGET_HOST_x86_64_unknown_linux_gnu='1'
 export NIX_BINTOOLS_WRAPPER_TARGET_HOST_x86_64_unknown_linux_gnu
-NIX_BUILD_CORES='12'
+NIX_BUILD_CORES='16'
 export NIX_BUILD_CORES
 NIX_CC='/nix/store/dc6bahp3f5af2rxz3pal9m3kp4vx4rpy-gcc-wrapper-14.2.1.20250322'
 export NIX_CC
@@ -53,7 +57,7 @@ NIX_CC_WRAPPER_TARGET_BUILD_x86_64_unknown_linux_gnu='1'
 export NIX_CC_WRAPPER_TARGET_BUILD_x86_64_unknown_linux_gnu
 NIX_CC_WRAPPER_TARGET_HOST_x86_64_unknown_linux_gnu='1'
 export NIX_CC_WRAPPER_TARGET_HOST_x86_64_unknown_linux_gnu
-NIX_CFLAGS_COMPILE=' -frandom-seed=vdijc3inds -isystem /nix/store/jv45xs1p8v9mcychfgkv6vxridcn532h-openssl-3.4.1-dev/include -isystem /nix/store/jv45xs1p8v9mcychfgkv6vxridcn532h-openssl-3.4.1-dev/include'
+NIX_CFLAGS_COMPILE=' -frandom-seed=sc88ikf5zh -isystem /nix/store/jv45xs1p8v9mcychfgkv6vxridcn532h-openssl-3.4.1-dev/include -isystem /nix/store/jv45xs1p8v9mcychfgkv6vxridcn532h-openssl-3.4.1-dev/include'
 export NIX_CFLAGS_COMPILE
 NIX_CFLAGS_COMPILE_FOR_BUILD=' -isystem /nix/store/jv45xs1p8v9mcychfgkv6vxridcn532h-openssl-3.4.1-dev/include -isystem /nix/store/jv45xs1p8v9mcychfgkv6vxridcn532h-openssl-3.4.1-dev/include -isystem /nix/store/jv45xs1p8v9mcychfgkv6vxridcn532h-openssl-3.4.1-dev/include'
 export NIX_CFLAGS_COMPILE_FOR_BUILD
@@ -61,7 +65,7 @@ NIX_ENFORCE_NO_NATIVE='1'
 export NIX_ENFORCE_NO_NATIVE
 NIX_HARDENING_ENABLE='bindnow format fortify fortify3 pic relro stackclashprotection stackprotector strictoverflow zerocallusedregs'
 export NIX_HARDENING_ENABLE
-NIX_LDFLAGS='-rpath /home/work/Documents/rust/bitBeam/outputs/out/lib  -L/nix/store/jn59p00df0j13ad5jn0q0irfpq6azvby-rust-default-1.86.0/lib -L/nix/store/xy8x4g472i5n1bh24c5ixhbnk6qlm9vz-openssl-3.4.1/lib -L/nix/store/jn59p00df0j13ad5jn0q0irfpq6azvby-rust-default-1.86.0/lib -L/nix/store/xy8x4g472i5n1bh24c5ixhbnk6qlm9vz-openssl-3.4.1/lib'
+NIX_LDFLAGS='-rpath /home/mrfluffy/bitBeam/outputs/out/lib  -L/nix/store/jn59p00df0j13ad5jn0q0irfpq6azvby-rust-default-1.86.0/lib -L/nix/store/xy8x4g472i5n1bh24c5ixhbnk6qlm9vz-openssl-3.4.1/lib -L/nix/store/jn59p00df0j13ad5jn0q0irfpq6azvby-rust-default-1.86.0/lib -L/nix/store/xy8x4g472i5n1bh24c5ixhbnk6qlm9vz-openssl-3.4.1/lib'
 export NIX_LDFLAGS
 NIX_LDFLAGS_FOR_BUILD=' -L/nix/store/jn59p00df0j13ad5jn0q0irfpq6azvby-rust-default-1.86.0/lib -L/nix/store/xy8x4g472i5n1bh24c5ixhbnk6qlm9vz-openssl-3.4.1/lib -L/nix/store/jn59p00df0j13ad5jn0q0irfpq6azvby-rust-default-1.86.0/lib -L/nix/store/xy8x4g472i5n1bh24c5ixhbnk6qlm9vz-openssl-3.4.1/lib -L/nix/store/jn59p00df0j13ad5jn0q0irfpq6azvby-rust-default-1.86.0/lib -L/nix/store/xy8x4g472i5n1bh24c5ixhbnk6qlm9vz-openssl-3.4.1/lib'
 export NIX_LDFLAGS_FOR_BUILD
@@ -173,7 +177,7 @@ declare -a envHostHostHooks=('ccWrapper_addCVars' 'bintoolsWrapper_addLDVars' 'p
 declare -a envHostTargetHooks=('ccWrapper_addCVars' 'bintoolsWrapper_addLDVars' 'pkgConfigWrapper_addPkgConfigPath' )
 declare -a envTargetTargetHooks=()
 declare -a fixupOutputHooks=('if [ -z "${dontPatchELF-}" ]; then patchELF "$prefix"; fi' 'if [[ -z "${noAuditTmpdir-}" && -e "$prefix" ]]; then auditTmpdir "$prefix"; fi' 'if [ -z "${dontGzipMan-}" ]; then compressManPages "$prefix"; fi' '_moveLib64' '_moveSbin' '_moveSystemdUserUnits' 'patchShebangsAuto' '_pruneLibtoolFiles' '_doStrip' )
-guess='12'
+guess='16'
 initialPath='/nix/store/cg09nslw3w6afyynjw484b86d47ic1cb-coreutils-9.7 /nix/store/frspb25x6v43fwv6b0wna1fm5nsqcp0b-findutils-4.10.0 /nix/store/8cs5vjkbwf2vicgms4km5k1kgbznhwip-diffutils-3.12 /nix/store/1h8gf327cgid0jgjygrj31amp63mn7a7-gnused-4.9 /nix/store/2wni3gbcf6fqwlfb2h9sv7jvqlpf1ylq-gnugrep-3.11 /nix/store/f8x04xqd2cs274k0hgfzsrms6sby2fgx-gawk-5.3.2 /nix/store/5jmcn57x2j9mkdr3j947cbja2hpxmhfn-gnutar-1.35 /nix/store/04z4rhjadrnd0w3ib2sl42pa3xjgpf7p-gzip-1.14 /nix/store/sysih19x8xx8l473d3qnr760hy758lkq-bzip2-1.0.8-bin /nix/store/agn71jakv0a9669k3zx5g9aqm2sl9z77-gnumake-4.4.1 /nix/store/xg75pc4yyfd5n2fimhb98ps910q5lm5n-bash-5.2p37 /nix/store/qd20g193gch8bj4h0h44wr97mw0bhkmf-patch-2.7.6 /nix/store/fi495i6cz40rq1axig930jzyw7ln0zhm-xz-5.8.1-bin /nix/store/hb9v0qx9vk0420z5grlnv2y5wcf6dp6i-file-5.46'
 mesonFlags=''
 export mesonFlags
@@ -181,7 +185,7 @@ name='nix-shell-env'
 export name
 nativeBuildInputs='/nix/store/jn59p00df0j13ad5jn0q0irfpq6azvby-rust-default-1.86.0 /nix/store/jv45xs1p8v9mcychfgkv6vxridcn532h-openssl-3.4.1-dev /nix/store/nbph466agczbny52jzk143ydcp2x14q4-pkg-config-wrapper-0.29.2 /nix/store/ml99slpq5d1yv9827m99cbdkn430kg4c-cargo-deny-0.18.2 /nix/store/dsq2icwvw7qwas4jawzywqrc04hf14ab-cargo-edit-0.13.3 /nix/store/fqdx4vdaa09fxa8cm4dfww0jh1mkz4y9-cargo-watch-8.5.3 /nix/store/xgp1b532vvisxvc4527b13gaw46s4dik-rust-analyzer-2025-05-05'
 export nativeBuildInputs
-out='/home/work/Documents/rust/bitBeam/outputs/out'
+out='/home/mrfluffy/bitBeam/outputs/out'
 export out
 outputBin='out'
 outputDev='out'
@@ -212,7 +216,7 @@ preConfigurePhases=' updateAutotoolsGnuConfigScriptsPhase'
 declare -a preFixupHooks=('_moveToShare' '_multioutDocs' '_multioutDevs' )
 preferLocalBuild='1'
 export preferLocalBuild
-prefix='/home/work/Documents/rust/bitBeam/outputs/out'
+prefix='/home/mrfluffy/bitBeam/outputs/out'
 declare -a propagatedBuildDepFiles=('propagated-build-build-deps' 'propagated-native-build-inputs' 'propagated-build-target-deps' )
 propagatedBuildInputs=''
 export propagatedBuildInputs

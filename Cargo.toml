@@ -8,6 +8,8 @@ axum = "0.8"
 bytes = "1.10"
 chrono = {version = "0.4",  features = ["serde"]}
 extract = "0.1"
+fern = "0.7.1"
+log = {version = "0.4.27", feature = "std"}
 rand = "0.9"
 serde = {version = "1.0", features = ["derive"]}
 sqlx = { version = "0.8", features = [

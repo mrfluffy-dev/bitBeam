@@ -1,49 +1,67 @@
 use axum::{
-    body::Bytes,
     extract::DefaultBodyLimit,
-    http::{HeaderMap, StatusCode},
-    response::{IntoResponse, Response},
     routing::{get, post},
-    Extension, Json, Router,
+    response::IntoResponse,
+    Extension, Router,
 };
-use chrono::{DateTime, Utc};
-use rand::Rng;
-use serde::Serialize;
-use sqlx::{any::AnyPoolOptions, migrate::MigrateDatabase, AnyPool, Encode, FromRow, Sqlite};
+use sqlx::{any::AnyPoolOptions, migrate::MigrateDatabase, AnyPool, Sqlite};
+use log::{info, warn, error, debug};
+
 use std::path::Path;
 use tokio::fs;
-use uuid::Uuid;
 
-#[derive(FromRow, Serialize)]
-struct File {
-    id: String,
-    content_type: String,
-    upload_time: i64,
-    download_limit: i32,
-    download_count: i32,
-    file_size: i64,
-}
+use std::net::SocketAddr;
+mod api;
+mod data;
 
-struct Config {
-    db_type: String,
-    database_url: String,
-}
-
+/// This is the main function of the application.
+/// It sets up the database connection,
+/// initializes the logging system,
+/// and starts the web server.
+/// It uses the Axum framework to handle HTTP requests.
+/// It also uses SQLx for database interactions.
+/// It uses the Fern library for logging.
+/// It uses the Tokio runtime for asynchronous programming.
+/// It uses the Chrono library for date and time handling.
+/// It uses the UUID library for generating unique identifiers.
+/// It uses the Bytes library for handling byte arrays.
+/// It uses the Serde library for serialization and deserialization.
 #[tokio::main]
 async fn main() {
     sqlx::any::install_default_drivers();
-    // Read and normalize DB type and connection URL
-    let config = Config {
-        db_type: std::env::var("BITBEEM_DB_TYPE").unwrap_or_else(|_| "postgres".to_string()),
-        database_url: match std::env::var("BITBEEM_DB_TYPE").unwrap().as_str() {
-            "postgres" => std::env::var("BITBEEM_DATABASE_URL")
-                .expect("BITBEEM_DATABASE_URL must be set for Postgres"),
-            "sqlite" => std::env::var("BITBEEM_DATABASE_URL")
-                .expect("BITBEEM_DATABASE_URL must be set for SQLite"),
-            other => panic!("Unsupported BITBEEM_DB_TYPE: {}", other),
+    // Load the configuration from environment variables
+    let config = data::Config {
+        db_type: std::env::var("BITBEAM_DB_TYPE").unwrap_or_else(|_| "postgres".to_string()),
+        database_url: match std::env::var("BITBEAM_DB_TYPE").unwrap().as_str() {
+            "postgres" => std::env::var("BITBEAM_DATABASE_URL")
+                .expect("BITBEAM_DATABASE_URL must be set for Postgres"),
+            "sqlite" => std::env::var("BITBEAM_DATABASE_URL")
+                .expect("BITBEAM_DATABASE_URL must be set for SQLite"),
+            other => panic!("Unsupported BITBEAM_DB_TYPE: {}", other),
         },
+        data_path: std::env::var("BITBEAM_DATA_PATH").unwrap_or_else(|_| "./media_store".to_string()),
+        port: std::env::var("BITBEAM_PORT").unwrap_or_else(|_| "3000".to_string()),
+        listener_addr: std::env::var("BITBEAM_ADDR").unwrap_or_else(|_| "127.0.0.1".to_string()),
+        log_level: std::env::var("BITBEAM_LOG_LEVEL").unwrap_or_else(|_| "info".to_string()),
+        log_location: std::env::var("BITBEAM_LOG_LOCATION").unwrap_or_else(|_| "./bitbeam.log".to_string()),
     };
+    // Setting up the logging system
+    // The log level is set based on the environment variable BITBEAM_LOG_LEVEL
+    let level = match config.log_level.as_str() {
+        "debug" => log::LevelFilter::Debug,
+        "info"  => log::LevelFilter::Info,
+        "warn"  => log::LevelFilter::Warn,
+        "error" => log::LevelFilter::Error,
+        _       => log::LevelFilter::Info,
+    };
+    // Initialize the logging system
+    let log_path = &config.log_location;
+    let _logs = init_logging(log_path, level);
+    info!("done loading config");
 
+    // Create the data path if it doesn't exist
+    // only if the db type is sqlite
+    // otherwise, the data path is not used
     if config.db_type == "sqlite" {
         if !Sqlite::database_exists(&config.database_url)
             .await
@@ -51,22 +69,27 @@ async fn main() {
         {
             println!("Creating database {}", config.database_url);
             match Sqlite::create_database(&config.database_url).await {
-                Ok(_) => println!("Create db success"),
-                Err(error) => panic!("error: {}", error),
+                Ok(_) => info!("Create db success"),
+                Err(error) => {
+                    error!("Error creating database: {}", error);
+                    panic!("error: {}", error)
+                },
             }
         } else {
-            println!("Database already exists");
+            info!("Database already exists");
         }
     }
 
-    // Create a generic AnyPool
+    // Create the database connection any pool
+    // The connection pool is created using the database URL from the configuration
     let pool: AnyPool = AnyPoolOptions::new()
         .max_connections(5)
         .connect(&config.database_url)
         .await
         .expect("could not connect to database");
 
-    // Migration SQL
+    // Setting up the database schema
+    // The database schema is created if it doesn't exist
     if let Err(_e) = sqlx::query(
         r#"
         CREATE TABLE IF NOT EXISTS files (
@@ -82,120 +105,89 @@ async fn main() {
     .execute(&pool)
     .await
     {
-        eprintln!("DB created");
+        info!("DB created");
     };
 
+    //create the directory if it doesn't exist
+    let dir = Path::new(&config.data_path);
+    if let Err(e) = fs::create_dir_all(dir).await {
+        warn!("could not make dir at {} error: {}", &config.data_path ,e);
+    }
+    //let file_path = dir.join(&id);
+
+    // Setting up the web server
+    // The web server is created using the Axum framework
+    // these are the routes
     let app = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
-        .route("/upload", post(upload))
-        .route("/all_files", get(all_files))
+        .route("/upload", post(api::upload))
+        .route("/all_files", get(api::all_files))
         .layer(DefaultBodyLimit::max(100 * 1024 * 1024))
-        .layer(Extension(pool));
+        .layer(Extension(pool))
+        .layer(Extension(config.clone()))
+        .into_make_service_with_connect_info::<SocketAddr>();
 
+    // The web server is started using the Axum framework
+    // The server listens on the address and port specified in the configuration
     axum::serve(
-        tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap(),
+        match  tokio::net::TcpListener::bind(format!("{}:{}",&config.listener_addr,&config.port)).await {
+            Ok(listener) => listener,
+            Err(e) => {
+                error!("Error binding to address {}:{} : {}",&config.listener_addr,&config.port, e);
+                return;
+            }
+        },
         app,
     )
     .await
     .unwrap();
 }
 
-/// Handler to return all files as JSON
-async fn all_files(Extension(pool): Extension<AnyPool>) -> impl IntoResponse {
-    // Run the query and map each row into a File
-    match sqlx::query_as::<_, File>(
-        r#"
-        SELECT *
-        FROM files
-        "#,
-    )
-    .fetch_all(&pool)
-    .await
-    {
-        Ok(files) => (StatusCode::OK, Json(files)).into_response(),
-        Err(e) => {
-            eprintln!("DB select all error: {}", e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Database select all error",
-            )
-                .into_response()
-        }
-    }
+/// This function initializes the logging system.
+/// It sets up a logger that writes to both stdout and a log file.
+/// It uses the Fern library for logging.
+/// It formats the log messages to include the date, time, log level, target, and message.
+/// It also sets the log level based on the provided level filter.
+/// It takes the log file path and log level as parameters.
+fn init_logging(log_file_path: &str, level: log::LevelFilter) -> Result<(), Box<dyn std::error::Error>> {
+    // Build a Dispatch for stdout
+    let stdout_dispatch = fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "[{date}][{lvl}][{target}] {msg}",
+                date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
+                lvl  = record.level(),
+                target = record.target(),
+                msg  = message,
+            ))
+        })
+        .level(level)
+        .chain(std::io::stdout());
+
+    // Build a Dispatch for a rolling log file
+    let file_dispatch = fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "[{date}][{lvl}][{target}] {msg}",
+                date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
+                lvl  = record.level(),
+                target = record.target(),
+                msg  = message,
+            ))
+        })
+        .level(level)
+        .chain(fern::log_file(log_file_path)?);
+
+    // Combine the stdout and file dispatches
+    // and apply them
+    // This sets up the logger to write to both stdout and the log file
+    fern::Dispatch::new()
+        .chain(stdout_dispatch)
+        .chain(file_dispatch)
+        .apply()?;
+
+    Ok(())
 }
 
-async fn upload(Extension(pool): Extension<AnyPool>, headers: HeaderMap, body: Bytes) -> Response {
-    let content_type = headers
-        .get("content-type")
-        .and_then(|hv| hv.to_str().ok())
-        .unwrap_or("application/octet-stream")
-        .to_string();
 
-    let id = {
-        // Fallback to random UUID if body is too small
-        let mut rng = rand::rng();
-        Uuid::from_u128(rng.random::<u128>()).to_string()
-    };
-    let dir = Path::new("./media_store");
-    if let Err(e) = fs::create_dir_all(dir).await {
-        eprintln!("mkdir error: {}", e);
-        return (
-            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            "Directory creation error",
-        )
-            .into_response();
-    }
 
-    let file_path = dir.join(&id);
-    if let Err(e) = fs::write(&file_path, &body).await {
-        eprintln!("write error {}: {}", id, e);
-        return (
-            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            "File write error",
-        )
-            .into_response();
-    }
-    let file_size = body.len() as i64;
-
-    let upload_time = Utc::now().timestamp(); // i64
-    let download_limit = headers
-        .get("download_limit") // Option<&HeaderValue>
-        .and_then(|hv| hv.to_str().ok()) // Option<&str>
-        .and_then(|s| s.parse::<i32>().ok()) // Option<u32>
-        .unwrap_or(2); // u32    let download_count = 0;
-    let download_count = 0;
-
-    if let Err(e) = sqlx::query(
-        r#"
-        INSERT INTO files
-            (id, content_type, upload_time, download_limit, download_count, file_size)
-        VALUES (?, ?, ?, ?, ?, ?)
-        "#,
-    )
-    .bind(&id)
-    .bind(&content_type)
-    .bind(&upload_time)
-    .bind(download_limit)
-    .bind(download_count)
-    .bind(file_size as i64)
-    .execute(&pool)
-    .await
-    {
-        eprintln!("DB insert error {}: {}", id, e);
-        return (
-            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            "Database insert error",
-        )
-            .into_response();
-    }
-
-    let uploaded_file = File {
-        id,
-        content_type,
-        upload_time,
-        download_limit,
-        download_count,
-        file_size,
-    };
-    Json(uploaded_file).into_response()
-}
