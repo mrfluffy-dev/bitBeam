@@ -13,11 +13,14 @@ use sqlx::FromRow;
 #[derive(FromRow, Serialize)]
 pub struct File {
     pub id: String,
+    pub file_name: String,
     pub content_type: String,
     pub upload_time: i64,
     pub download_limit: i32,
     pub download_count: i32,
     pub file_size: i64,
+    pub download_url: String,
+    pub owner: String,
 }
 
 /// This struct is used to represent the configuration settings for the application.
@@ -34,4 +37,14 @@ pub struct Config {
     pub listener_addr: String,
     pub log_level: String,
     pub log_location: String,
+    pub use_tls: bool,
+    pub base_url: String,
+    pub allow_register: bool,
+}
+
+#[derive(FromRow, Serialize)]
+pub struct user {
+    pub key: String,
+    pub username: String,
+    pub password: String,
 }

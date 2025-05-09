@@ -79,6 +79,7 @@
             RUST_SRC_PATH = "${pkgs.rust-bin.stable.latest.default}/lib/rustlib/src/rust/library";
             BITBEAM_DATABASE_URL = "sqlite://./bitbeam.sqlite";
             BITBEAM_DB_TYPE = "sqlite";
+            DATABASE_URL = "sqlite://./bitbeam.sqlite";
           };
         }
       );
